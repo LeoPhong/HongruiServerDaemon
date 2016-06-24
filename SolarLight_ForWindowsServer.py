@@ -10,6 +10,8 @@ import queue
 import pymysql
 import pymysql.cursors
 import multiprocessing
+import base64
+import sys
 
 
 
@@ -68,11 +70,18 @@ class TCPConnectioin:
 
 class DBBase:
     def __init__(self,database_name):
+        try:
+            with open('dbpasswd','rb') as f_handler:
+                db_passwd = str(base64.decodestring(f_handler.read()),encoding = 'utf-8')
+        except:
+            print('The password file is not found...')
+            sys.exit(1)
+
         db_config = {
                 'host':'localhost',
                 'port':3306,
                 'user':'localusers',
-                'password':'zdh-dqkz',
+                'password':db_passwd,
                 'db':database_name,
                 'charset':'utf8mb4',
                 'cursorclass':pymysql.cursors.DictCursor,
