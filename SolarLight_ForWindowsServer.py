@@ -140,7 +140,11 @@ class PackageTransfrom:
         #print(package_raw)
         data,gsm_info,counter = package_raw
 
-        if b'IDR' in data:
+        if b'\x81\x85\x86' in data:                                                 #为了和云博的协议保持兼容，节点端已经实现了两套协议，需要在这里加入判断保持完美兼容
+            buff = data.split(b'\x81\x85\x86')
+            data_return = b'\x81\x85\x86' + buff[1]
+
+        elif b'IDR' in data:
             buff = data.split(b'IDR')
             data_return = b'IDR' + buff[1]
 
@@ -180,7 +184,34 @@ class PackageTransfrom:
         try:
             data = self.__preProcessPackage(data)
             #路灯端返回数据包
-            if str(data[0][0:3],encoding='utf-8') == 'IDR':         #解码ID命令的返回数据包
+            if data[0][0:3] == '\x81\x85\x86':                          #为了和云博的协议保持兼容，增加一处判断，相当与IDR指令的变体
+                print(data)
+                node_tiny_id_str = self.__bytes2str(data[0][3:5])
+                node_id_str = self.__bytes2str(data[0][5:])
+                gsm_ip = data[1][0]
+                gsm_port = str(data[1][1])
+                sql = "SELECT * FROM NodeMapping WHERE Node_ID = %s;"
+                data = (node_id_str,)
+                db_handle = DBBase('SolarLight')
+                res = db_handle.dbExec(sql,data)
+                db_handle.dbClose()
+                if (res == tuple()) or (res == []):
+                    sql = "INSERT NodeMapping (Node_ID,Tiny_ID,GSM_IP,GSM_Port,online) VALUES (%s,%s,%s,%s,%s)"
+                    data = (node_id_str,node_tiny_id_str,gsm_ip,gsm_port,1)
+                    db_handle = DBBase('SolarLight')
+                    try:
+                        db_handle.dbExec(sql,data)
+                    except:
+                        print('We have the problem! IntegrityError:')
+                    db_handle.dbClose()
+                else:
+                    sql = "UPDATE NodeMapping SET Tiny_ID=%s,GSM_IP=%s,GSM_Port=%s,online=%s WHERE Node_ID=%s"
+                    data = (node_tiny_id_str,gsm_ip,gsm_port,1,node_id_str)
+                    db_handle = DBBase('SolarLight')
+                    db_handle.dbExec(sql,data)
+                    db_handle.dbClose()
+
+            elif str(data[0][0:3],encoding='utf-8') == 'IDR':           #解码ID命令的返回数据包
                 print(data)
                 node_tiny_id_str = self.__bytes2str(data[0][4:6])
                 node_id_str = self.__bytes2str(data[0][6:])
