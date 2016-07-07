@@ -799,11 +799,11 @@ if __name__ == '__main__':
     gsm_xinhua_connection = GSMConnection(receive_queue_from_node,send_queue_to_node,30001)
     gsm_xinhua_connection.start()
     gsm_juzizhou_connection = GSMConnection(receive_queue_from_node,send_queue_to_node,30002)
-#    gsm_juzizhou_connection.start()
+    gsm_juzizhou_connection.start()
     client_connection = ClientConnection(receive_queue_from_app,send_queue_to_app)
     client_connection.start()
     db_connection_handle.join()
     gsm_xinhua_connection.join()
-#    gsm_juzizhou_connection.join()
+    gsm_juzizhou_connection.join()
     client_connection.join()
 
