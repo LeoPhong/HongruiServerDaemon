@@ -711,6 +711,7 @@ class GSMConnection(multiprocessing.Process):
                 if (gsm_ip_str == socket_info[1][0]) and (gsm_port_int == socket_info[1][1]):
                     self.tcp_handle.sendData(package[0],socket_info)
                     fail_counter = 0
+                    start_time = time.time()
                     time.sleep(2)
                 else:
                     if package[2] < 3:                                                              #重试的次数等于当前发送线程的数量再加三
@@ -723,7 +724,8 @@ class GSMConnection(multiprocessing.Process):
                         fail_counter += 1
                         print('Sending package timeout!')
             #else:
-            if fail_counter >= 7:
+            #if fail_counter >= 7:
+            if time.time() - start_time > 50*60:
                 print('The thread of the sending data to gsm is closed...')
                 self.tcp_handle.connectionClose(socket_info)
                 break
