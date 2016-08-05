@@ -723,7 +723,7 @@ class GSMConnection(multiprocessing.Process):
                         fail_counter += 1
                         print('Sending package timeout!')
             #else:
-            if fail_counter >= 5:
+            if fail_counter >= 7:
                 print('The thread of the sending data to gsm is closed...')
                 self.tcp_handle.connectionClose(socket_info)
                 break
