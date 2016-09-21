@@ -90,3 +90,6 @@ ENV/
 
 # Password file
 dbpasswd
+
+# VS Code project files
+.vscode/
