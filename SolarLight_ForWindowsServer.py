@@ -552,7 +552,7 @@ class PackageTransfrom:
                 continue
             else:
                 gsm_info = (gsm_info_dict['GSM_IP'], int(gsm_info_dict['GSM_Port']))
-                send_package_queue.put(sending_package,gsm_info,1)
+                send_package_queue.put((sending_package,gsm_info,1))
     
     
     def sendSetPanID(self,send_package_queue):
@@ -566,7 +566,7 @@ class PackageTransfrom:
                 continue
             else:
                 gsm_info = (gsm_info_dict['GSM_IP'] ,int(gsm_info_dict['GSM_Port']))
-                send_package_queue.put(sending_package,gsm_info,1)
+                send_package_queue.put((sending_package,gsm_info,1))
     
     
     def sendRebootCmd(self, send_package_queue):
@@ -580,7 +580,7 @@ class PackageTransfrom:
                 continue
             else:
                 gsm_info = (gsm_info_dict['GSM_IP'], int(gsm_info_dict['GSM_Port']))
-                send_package_queue.put(sending_package,gsm_info,1)
+                send_package_queue.put((sending_package,gsm_info,1))
 
 
     def processPackageFromAppAndResponse(self,data):
@@ -693,7 +693,7 @@ class DBConnection(multiprocessing.Process):
                 last_run_inquire_gsm_voltage_time = time.time()
                 continue
             
-            elif time.time() - last_check_panID > 113*60:             #检查panID是否被修改
+            elif time.time() - last_check_panID > 7*60:             #检查panID是否被修改
                 package_transfrom_handle.sendCheckPanID(self.package_send_to_GSM_queue)
                 last_check_panID = time.time()
                 continue
