@@ -347,13 +347,15 @@ class PackageTransfrom:
                 db_handle.dbClose()
             
             elif str(data[0][0:7],encoding='utf-8') == 'Channel':       #对CH指令返回的数据做检查，判断是否需要修改panID
+                print(data)
                 if b'0806' in data[0]:
                     self.setPanID_flag = 0
                 else:
                     self.setPanID_flag = 1
             
-            elif str(data[0][0:3],encoding='utf-8') == 'panID':         #对SID指令返回的数据做检查，判断panID修改是否成功
-                if b'panID OK!' in data[0]:
+            elif str(data[0][0:8],encoding='utf-8') == 'panID OK':         #对SID指令返回的数据做检查，判断panID修改是否成功
+                print(data)
+                if b'panID OK' in data[0]:
                     self.setPanID_flag = 2                              #该变量写入2表明准备重启GSM
                 else:
                     self.setPanID_flag = 1
@@ -656,9 +658,11 @@ class DBConnection(multiprocessing.Process):
         self.package_receive_from_app_queue = package_receive_from_app_queue
         self.package_send_to_app_queue = package_send_to_app_queue
 
+        self.package_transfrom_handle = PackageTransfrom()
+
 
     def __sendPackagesToGSMs(self):
-        package_transfrom_handle = PackageTransfrom()
+        #package_transfrom_handle = PackageTransfrom()
         last_run_search_id_time = 0
         last_run_set_para_time = 0
         last_run_inquire_status_time = 0
@@ -669,59 +673,61 @@ class DBConnection(multiprocessing.Process):
         
         while True:
             if time.time()-last_run_search_id_time > 31*60:
-                package_transfrom_handle.sendSearchIDPackage(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendSearchIDPackage(self.package_send_to_GSM_queue)
                 last_run_search_id_time = time.time()
                 continue
             
             elif time.time() - last_run_set_para_time > 5*60:
-                package_transfrom_handle.sendSettingParameterToNodes(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendSettingParameterToNodes(self.package_send_to_GSM_queue)
                 last_run_set_para_time = time.time()
                 continue
             
             elif time.time() -last_run_inquire_status_time > 17*60:
-                package_transfrom_handle.sendInquireStatusToNodes(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendInquireStatusToNodes(self.package_send_to_GSM_queue)
                 last_run_inquire_status_time = time.time()
                 continue
             
             elif time.time() - last_run_inquire_para_time > 61*60:
-                package_transfrom_handle.sendInquireParameterToNodes(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendInquireParameterToNodes(self.package_send_to_GSM_queue)
                 last_run_inquire_para_time = time.time()
                 continue
 
             elif time.time() - last_run_inquire_gsm_voltage_time > 23*60:
-                package_transfrom_handle.sendInquireGSMVolatage(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendInquireGSMVolatage(self.package_send_to_GSM_queue)
                 last_run_inquire_gsm_voltage_time = time.time()
                 continue
             
             elif time.time() - last_check_panID > 7*60:             #检查panID是否被修改
-                package_transfrom_handle.sendCheckPanID(self.package_send_to_GSM_queue)
+                self.package_transfrom_handle.sendCheckPanID(self.package_send_to_GSM_queue)
                 last_check_panID = time.time()
                 continue
             
             else:
                 #将修改PanID的过程放在这里
-                if package_transfrom_handle.setPanID_flag == 1:
-                    package_transfrom_handle.sendSetPanID(self.package_send_to_GSM_queue)
-                elif package_transfrom_handle.setPanID_flag == 2:
-                    package_transfrom_handle.sendRebootCmd(self.package_send_to_GSM_queue)
+                if self.package_transfrom_handle.setPanID_flag == 1:
+                    self.package_transfrom_handle.sendSetPanID(self.package_send_to_GSM_queue)
+                elif self.package_transfrom_handle.setPanID_flag == 2:
+                    self.package_transfrom_handle.sendRebootCmd(self.package_send_to_GSM_queue)
+                    self.package_transfrom_handle.setPanID_flag = 0
                 else:
-                    print('PanID need not to modify!')
+                    pass
+                    #print('PanID need not to modify!')
                 time.sleep(13)
                 continue
 
 
     def __receivePackagesFromGSMs(self):
-        package_transfrom_handle = PackageTransfrom() 
+        #package_transfrom_handle = PackageTransfrom() 
         while True:
             package_receive_from_GSM = self.package_receive_from_GSM_queue.get()
-            package_transfrom_handle.processPackageFromGSM(package_receive_from_GSM)
+            self.package_transfrom_handle.processPackageFromGSM(package_receive_from_GSM)
 
 
     def __receivePackagesFromApps(self):
-        package_transfrom_handle = PackageTransfrom()
+        #package_transfrom_handle = PackageTransfrom()
         while True:
             package_receive_from_app = self.package_receive_from_app_queue.get()
-            response_packages_to_app = package_transfrom_handle.processPackageFromAppAndResponse(package_receive_from_app)
+            response_packages_to_app = self.package_transfrom_handle.processPackageFromAppAndResponse(package_receive_from_app)
             self.package_send_to_app_queue.put(response_packages_to_app)
 
 
