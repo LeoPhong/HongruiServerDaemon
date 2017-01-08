@@ -93,3 +93,6 @@ dbpasswd
 
 # VS Code project files
 .vscode/
+
+# other files
+tags
