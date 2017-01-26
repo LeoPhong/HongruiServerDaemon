@@ -116,6 +116,7 @@ class DBBase:
 class PackageTransfrom:
     def __init__(self):
         self.setPanID_flag = 0                          #用于标识是否设置panID，0是不设置panID，1是需要设置panID，2是设置完毕，需要重启
+        self.setChannel_flag = 0                        #用于标识是否设置信道，0是不设置信道，1是设置信道，2是设置完毕，需要重启
 
 
     def __bytes2str(self,data_bytes):
@@ -346,12 +347,16 @@ class PackageTransfrom:
                 db_handle.dbExec("UPDATE NodeMapping SET GSM_ID=%s,GSM_IP=%s,GSM_Port=%s WHERE (GSM_IP=%s AND GSM_Port=%s) OR (GSM_ID=%s)",(gsm_id,gsm_info[0],str(gsm_info[1]),gsm_info[0],str(gsm_info[1]),gsm_id))
                 db_handle.dbClose()
             
-            elif str(data[0][0:7],encoding='utf-8') == 'Channel':       #对CH指令返回的数据做检查，判断是否需要修改panID
+            elif str(data[0][0:8],encoding='utf-8') == 'Channel:':       #对CH指令返回的数据做检查，判断是否需要修改panID
                 print(data)
                 if b'0806' in data[0]:
                     self.setPanID_flag = 0
                 else:
                     self.setPanID_flag = 1
+                if b'11' in data[0]:
+                    self.setChannel_flag = 0
+                else:
+                    self.setChannel_flag = 1
             
             elif str(data[0][0:8],encoding='utf-8') == 'panID OK':         #对SID指令返回的数据做检查，判断panID修改是否成功
                 print(data)
@@ -359,6 +364,13 @@ class PackageTransfrom:
                     self.setPanID_flag = 2                              #该变量写入2表明准备重启GSM
                 else:
                     self.setPanID_flag = 1
+            
+            elif str(data[0][0:10],encoding='utf-8') == 'Channel OK':
+                print(data)
+                if b'Channel OK' in data[0]:
+                    self.setChannel_flag = 2
+                else:
+                    self.setChannel_flag = 1
             else:
                 print(data)
                 print('Invaild package!')
@@ -543,8 +555,8 @@ class PackageTransfrom:
                 send_package_queue.put((sending_package,gsm_info,1))
     
 
-    def sendCheckPanID(self,send_package_queue):                                #该方法用于向GSM发送CH指令，暂时解决panID被篡改的问题
-        print('Send Check PanID Command...')
+    def sendCheckPanID(self,send_package_queue):                                #该方法用于向GSM发送CH指令，暂时解决panID和信道被篡改的问题
+        print('Send Check PanID and Channel Command...')
         db_handle = DBBase('SolarLight')
         gsm_info_data = db_handle.dbExec("SELECT DISTINCT GSM_IP,GSM_Port FROM NodeMapping;")
         db_handle.dbClose()
@@ -570,6 +582,20 @@ class PackageTransfrom:
                 gsm_info = (gsm_info_dict['GSM_IP'] ,int(gsm_info_dict['GSM_Port']))
                 send_package_queue.put((sending_package,gsm_info,1))
     
+
+    def sendSetChannel(self,send_package_queue):
+        print('Send set Channel Command...')
+        db_handle = DBBase('SolarLight')
+        gsm_info_data = db_handle.dbExec("SELECT DISTINCT GSM_IP,GSM_Port FROM NodeMapping;")
+        db_handle.dbClose()
+        for gsm_info_dict in gsm_info_data:
+            sending_package = b'SCH11'
+            if (gsm_info_dict['GSM_IP'] == None) or (gsm_info_dict['GSM_Port'] == None):
+                continue
+            else:
+                gsm_info = (gsm_info_dict['GSM_IP'] ,int(gsm_info_dict['GSM_Port']))
+                send_package_queue.put((sending_package,gsm_info,1))
+
     
     def sendRebootCmd(self, send_package_queue):
         print('Send Reboot Command...')
@@ -697,7 +723,7 @@ class DBConnection(multiprocessing.Process):
                 last_run_inquire_gsm_voltage_time = time.time()
                 continue
             
-            elif time.time() - last_check_panID > 7*60:             #检查panID是否被修改
+            elif time.time() - last_check_panID > 7*60:             #检查panID和信道是否被修改
                 self.package_transfrom_handle.sendCheckPanID(self.package_send_to_GSM_queue)
                 last_check_panID = time.time()
                 continue
@@ -709,8 +735,14 @@ class DBConnection(multiprocessing.Process):
                 elif self.package_transfrom_handle.setPanID_flag == 2:
                     self.package_transfrom_handle.sendRebootCmd(self.package_send_to_GSM_queue)
                     self.package_transfrom_handle.setPanID_flag = 0
-                else:
-                    pass
+                
+                #将修改信道的过程放在这里
+                if self.package_transfrom_handle.setChannel_flag == 1:
+                    self.package_transfrom_handle.sendSetChannel(self.package_send_to_GSM_queue)
+                elif self.package_transfrom_handle.setChannel_flag == 2:
+                    self.package_transfrom_handle.sendRebootCmd(self.package_send_to_GSM_queue)
+                    self.package_transfrom_handle.setChannel_flag = 0
+
                     #print('PanID need not to modify!')
                 time.sleep(13)
                 continue
