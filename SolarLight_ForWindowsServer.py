@@ -2,6 +2,7 @@
 # This program is used for building the bridge between GSM from Solar Light and users' app
 #
 #
+# Author: LeoPhong
 
 import socket
 import time
